@@ -1,12 +1,12 @@
 # Remote Sensor Mode in WiFi Explorer Pro
 
-[WiFi Explorer Pro](www.adriangranados.com/apps/wifiexplorer) allows you to connect to a remote platform (e.g. Raspberry Pi) and perform a passive Wi-Fi scan using a capable Wi-Fi adapter. When a remote sensor is used, the scan results are sent back to WiFi Explorer Pro for its visualization.
+[WiFi Explorer Pro](https://www.adriangranados.com/apps/wifiexplorer) allows you to connect to a remote platform (e.g. Raspberry Pi) and perform a passive Wi-Fi scan using a capable Wi-Fi adapter. When a remote sensor is used, the scan results are sent back to WiFi Explorer Pro for its visualization.
 
 **To use a platform as a remote sensor you will need a Linux-based computer with a Wi-Fi adapter capable of using monitor mode, and a Python script that enables the sensor functionality.**
 
 ## Remote Sensor Setup
 
-1. Download [wifiexplorer-sensor.py](../blob/master/wifiexplorer-sensor.py) and copy the script to the Linux-based platform that will be used as a remote sensor. I recommend you place the script under /usr/local/bin. Also, make sure it has executable permissions: 
+1. Download [wifiexplorer-sensor.py](../master/wifiexplorer-sensor.py) and copy the script to the Linux-based platform that will be used as a remote sensor. I recommend you place the script under /usr/local/bin. Also, make sure it has executable permissions: 
 
 ```bash
 sudo chmod +x /usr/local/bin/wifiexplorer-sensor.py
