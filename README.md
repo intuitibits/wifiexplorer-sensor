@@ -4,6 +4,8 @@
 
 **To use a platform as a remote sensor you will need a Linux-based computer with a Wi-Fi adapter capable of using monitor mode, and a Python script that enables the sensor functionality.**
 
+## Installation
+
 1. Download [wifiexplorer-sensor.py](../master/wifiexplorer-sensor.py) and copy the script to the Linux-based platform that will be used as a remote sensor. I recommend you place the script under /usr/local/bin. Also, make sure it has executable permissions: 
 
 ```bash
