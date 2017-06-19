@@ -6,7 +6,7 @@
 
 ## Installation
 
-1. Download [wifiexplorer-sensor.py](../master/wifiexplorer-sensor.py) and copy the script to the Linux-based platform that will be used as a remote sensor. I recommend you place the script under /usr/local/bin. Also, make sure it has executable permissions: 
+1. Download [wifiexplorer-sensor.py](../master/wifiexplorer-sensor.py) and copy the script to the Linux-based platform that will be used as a remote sensor. I recommend you place the script under ```/usr/local/bin```. Also, make sure it has executable permissions: 
 
 ```bash
 sudo chmod +x /usr/local/bin/wifiexplorer-sensor.py
@@ -18,7 +18,7 @@ sudo chmod +x /usr/local/bin/wifiexplorer-sensor.py
 sudo apt-get install python scapy tcpdump
 ```
 
-3. Launch the script. For example, if wlan0 is the Wi-Fi adapter to be used, type: 
+3. Launch the script. For example, if _wlan0_ is the Wi-Fi adapter to be used, type: 
 
 ```bash
 sudo nohup /usr/local/bin/wifiexplorer-sensor.py wlan0 > /tmp/wifiexplorer-sensor.log 2>&1 &
