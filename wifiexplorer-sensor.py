@@ -124,6 +124,9 @@ def channel_hopper():
     supported_channels = [x for x in channels if x not in unsupported_channels]
     for ch in supported_channels:
 
+        if not sniffing:
+            break
+
         # Set new channel
         msg = nlmsg_alloc()
         genlmsg_put(msg, 0, 0, driver_id, 0, 0, nl80211.NL80211_CMD_SET_CHANNEL, 0)
