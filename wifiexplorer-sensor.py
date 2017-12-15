@@ -60,10 +60,14 @@ running = False  # flag to stop main loop
 
 lock = threading.Lock()
 
-def error(message, code=1):
+def error(message):
     if message:
-        print 'Error: {0}'.format(message)
-    sys.exit(code)
+        print '> (error) {0}'.format(message)
+
+
+def info(message):
+    if message:
+        print '> (info) {0}'.format(message)
 
 
 def packet_handler(p):
@@ -101,10 +105,12 @@ def channel_hopper():
     sk = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
         info = struct.unpack('16sI', fcntl.ioctl(sk.fileno(), 0x8933, pack))
-    except OSError:
-        error('Wireless interface {0} does not exist.'.format(OPTIONS['<interface>']))
+    except (OSError, IOError):
+        error('wireless interface {0} does not exist.'.format(interface))
+        return -1
     finally:
         sk.close()
+
     if_index = int(info[1])
 
     # Open a socket to the kernel
@@ -113,12 +119,14 @@ def channel_hopper():
     if ret < 0:
         reason = errmsg[abs(ret)]
         error('genl_connect() failed: {0} ({1})'.format(ret, reason))
+        return -1
 
     # Now get the nl80211 driver ID
     driver_id = genl_ctrl_resolve(sk, b'nl80211')
     if driver_id < 0:
         reason = errmsg[abs(driver_id)]
         error('genl_ctrl_resolve() failed: {0} ({1})'.format(driver_id, reason))
+        return -1
 
     # Iterate over channels using the corresponding dwell time
     supported_channels = [x for x in channels if x not in unsupported_channels]
@@ -145,6 +153,7 @@ def channel_hopper():
             else:
                 dwelltimes[ch] = maxdwelltime
 
+    return 0
 
 def interface_mode(mode):
     # Set interface in managed mode
@@ -187,7 +196,7 @@ if __name__ == "__main__":
         s.listen(10)
         running = True
         while running:
-            print "> ready"
+            info("ready")
             conn, addr = s.accept()
             remote_addr = conn.getpeername()
 
@@ -201,34 +210,35 @@ if __name__ == "__main__":
                 t.start()
 
                 try:
-                    print "> connected to " + remote_addr[0]
+                    info("connected to " + remote_addr[0])
                     while sniffing:
-                        channel_hopper()
-                        lock.acquire()
-                        found = networks.copy()
-                        networks.clear()
-                        lock.release()
-                        conn.sendall(struct.pack("!I", len(found.keys())))
-                        for key in found:
-                            conn.sendall(struct.pack("!I", len(found[key])) + str(found[key]))
-
+                        if channel_hopper() == 0:
+                            lock.acquire()
+                            found = networks.copy()
+                            networks.clear()
+                            lock.release()
+                            conn.sendall(struct.pack("!I", len(found.keys())))
+                            for key in found:
+                                conn.sendall(struct.pack("!I", len(found[key])) + str(found[key]))
+                        else:
+                            break
 
                 except socket.error:
-                    conn.close()
+                    pass
 
                 sniffing = False
                 t.join()
             else:
-                print "> failed to set monitor mode"
-                conn.close()
+                error("failed to set monitor mode")
 
-            print "> disconnected from " + remote_addr[0]
+            conn.close()
+            info("disconnected from " + remote_addr[0])
 
             # Set interface in managed mode
             interface_mode("Managed")
 
     except socket.error as msg:
-        print "> bind failed with error: " + str(msg[0]) + " (" + msg[1] + ")"
+        error("bind failed: " + str(msg[0]) + " (" + msg[1] + ")")
         sys.exit(-1)
 
     s.close()
