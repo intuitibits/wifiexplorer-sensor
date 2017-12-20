@@ -176,10 +176,13 @@ if __name__ == "__main__":
         sys.exit(-1)
 
     if len(sys.argv) < 2:
-        print("Usage: wifiexplorer-sensor.py <iface>")
+        print("Usage: wifiexplorer-sensor.py <iface> [port]")
         sys.exit(-1)
 
     interface = sys.argv[1]
+
+    if len(sys.argv) == 3:
+        port = int(sys.argv[2])
 
     for ch in channels:
         dwelltimes[ch] = maxdwelltime
