@@ -30,7 +30,23 @@ sudo pip install libnl
 sudo nohup /usr/local/bin/wifiexplorer-sensor.py wlan0 > /tmp/wifiexplorer-sensor.log 2>&1 &
 ```
 
-5. (**Optional**) You can make the script launch at startup by editing ```/etc/rc.local``` to include the line above. If your Wi-Fi adapter is other than _wlan0_, change it accordingly. Also, the line above must be included just before the line that says ```exit 0```, in case such line is present.
+(**Optional**) You can make the script launch at startup by editing ```/etc/rc.local``` to include the line above. If your Wi-Fi adapter is other than _wlan0_, change it accordingly. Also, the line above must be included just before the line that says ```exit 0```, in case such line is present.
+
+If you have a Debian-based system, you could also use the ```wifiexplorer-sensor``` startup script. Copy ```wifiexplorer-sensor``` to the target platform, then type the following to enable it:
+  
+```bash
+sudo install -p -m 755 wifiexplorer-sensor /etc/init.d/wifiexplorer-sensor
+sudo update-rc.d wifiexplorer-sensor defaults
+sudo systemctl daemon-reload
+```
+  
+Then, start the sensor by typing:
+  
+```bash
+sudo service wifiexplorer-sensor start
+```
+
+## Using
 
 Once the platform is ready, go to _WiFi Explorer Pro > Preferences > Sensors_ and click '+' to add the new sensor by entering its IP address. This address would be the wired (Ethernet) IP address unless you have a secondary Wi-Fi adapter you can use to connect to the sensor (the Wi-Fi adapter used for scanning will be switched to monitor mode while the scan is in progress!).
 
