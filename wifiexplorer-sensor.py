@@ -1,8 +1,8 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 #
 # wifiexplorer-sensor.py
 # This script enables remote scanning in WiFi Explorer Pro.
-# Version 2.0
+# Version 3.0
 #
 # Copyright (c) 2017 Adrian Granados. All rights reserved.
 #
@@ -60,12 +60,12 @@ lock = threading.Lock()
 
 def error(message):
     if message:
-        print '> (error) {0}'.format(message)
+        print('> (error) {0}'.format(message))
 
 
 def info(message):
     if message:
-        print '> (info) {0}'.format(message)
+        print('> (info) {0}'.format(message))
 
 
 def packet_handler(p):
@@ -99,7 +99,7 @@ def channel_hopper():
     global count
 
     # Get the index of the interface
-    pack = struct.pack('16sI', interface, 0)
+    pack = struct.pack('16sI', interface.encode(), 0)
     sk = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
         info = struct.unpack('16sI', fcntl.ioctl(sk.fileno(), 0x8933, pack))
@@ -170,7 +170,7 @@ def signal_handler(signal, frame):
 if __name__ == "__main__":
 
     if os.geteuid() != 0:
-        print "You need to have root privileges to run this script."
+        print("You need to have root privileges to run this script.")
         sys.exit(-1)
 
     if len(sys.argv) < 2:
@@ -220,7 +220,7 @@ if __name__ == "__main__":
                             lock.release()
                             conn.sendall(struct.pack("!I", len(found.keys())))
                             for key in found:
-                                conn.sendall(struct.pack("!I", len(found[key])) + str(found[key]))
+                                conn.sendall(struct.pack("!I", len(found[key])) + raw(found[key]))
                         else:
                             break
 
