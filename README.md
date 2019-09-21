@@ -46,7 +46,7 @@ Then, start the sensor by typing:
 sudo service wifiexplorer-sensor start
 ```
 
-## Using
+## Use
 
 Once the platform is ready, go to _WiFi Explorer Pro > Preferences > Sensors_ and click '+' to add the new sensor by entering its IP address. This address would be the wired (Ethernet) IP address unless you have a secondary Wi-Fi adapter you can use to connect to the sensor (the Wi-Fi adapter used for scanning will be switched to monitor mode while the scan is in progress!).
 
