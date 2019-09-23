@@ -47,7 +47,7 @@ channels = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, \
 unsupported_channels = set()
 
 mindwelltime = 0.060
-maxdwelltime = 0.120
+maxdwelltime = 0.180
 dwelltimes = {}  # a map of ch, dwelltime
 count = 0  # number of captured packets during dwelltime
 
@@ -142,7 +142,7 @@ def channel_hopper():
 
         if nl_send_auto(sk, msg) < 0:
             unsupported_channels.add(ch)
-            time.sleep(0.02)
+            time.sleep(0.01)
         else:
             count = 0
             time.sleep(dwelltimes[ch])
@@ -220,7 +220,10 @@ if __name__ == "__main__":
                             lock.release()
                             conn.sendall(struct.pack("!I", len(found.keys())))
                             for key in found:
-                                conn.sendall(struct.pack("!I", len(found[key])) + raw(found[key]))
+                                if (sys.version_info > (3, 0)):
+                                    conn.sendall(struct.pack("!I", len(found[key])) + raw(found[key]))
+                                else:
+                                    conn.sendall(struct.pack("!I", len(found[key])) + str(found[key]))
                         else:
                             break
 
