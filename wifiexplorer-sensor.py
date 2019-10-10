@@ -156,7 +156,7 @@ def channel_hopper():
 def interface_mode(mode):
     # Set interface in managed mode
     os.system("ip link set %s down" % interface)
-    success = os.system("iwconfig %s mode %s" % (interface, mode)) == 0
+    success = os.system("iw dev %s set type %s" % (interface, mode)) == 0
     os.system("ip link set %s up" % interface)
     return success
 
@@ -202,7 +202,7 @@ if __name__ == "__main__":
             remote_addr = conn.getpeername()
 
             # Set interface in monitor mode
-            if interface_mode("Monitor"):
+            if interface_mode("monitor"):
 
                 sniffing = True
 
@@ -239,7 +239,7 @@ if __name__ == "__main__":
             info("disconnected from " + remote_addr[0])
 
             # Set interface in managed mode
-            interface_mode("Managed")
+            interface_mode("managed")
 
     except socket.error as msg:
         error("bind failed: " + str(msg[0]) + " (" + msg[1] + ")")
