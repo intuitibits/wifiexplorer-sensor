@@ -188,6 +188,9 @@ if __name__ == "__main__":
     # Install Ctrl+C signal handler
     signal.signal(signal.SIGINT, signal_handler)
 
+    # Ignore alarm signal (triggered by waking up a WLAN Pi screen)
+    signal.signal(signal.SIGALRM, signal.SIG_IGN)
+
     # Start server
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
