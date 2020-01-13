@@ -2,7 +2,7 @@
 #
 # wifiexplorer-sensor.py
 # This script enables remote scanning in WiFi Explorer Pro.
-# Version 3.0
+# Version 4.0
 #
 # Copyright (c) 2017 Adrian Granados. All rights reserved.
 #
@@ -39,6 +39,7 @@ logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
 from scapy.all import *
 
 port = 26999
+maxclients = 30
 
 interface = ''  # e.g. wlan0
 channels = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, \
@@ -51,12 +52,14 @@ maxdwelltime = 0.180
 dwelltimes = {}  # a map of ch, dwelltime
 count = 0  # number of captured packets during dwelltime
 
+clients  = []
 networks = {}
 
 sniffing = False  # flag to stop sniffer
 running = False  # flag to stop main loop
 
-lock = threading.Lock()
+clients_lock  = threading.Lock()
+networks_lock = threading.Lock()
 
 def error(message):
     if message:
@@ -67,6 +70,58 @@ def info(message):
     if message:
         print('> (info) {0}'.format(message))
 
+def server_handler(socket, condition):
+    global clients
+    global running
+    global maxclients
+    while running:
+
+        with condition:
+            while running and len(clients) >= maxclients:
+                condition.wait()
+
+        conn, addr = socket.accept()
+        info("client connected: " + conn.getpeername()[0])
+        with clients_lock:
+            clients.append(conn)
+            with condition:
+                condition.notify()
+
+def send_results(networks):
+    global clients
+    disconnected_clients = []
+
+    with clients_lock:
+        # Send header (number of results)
+        header = struct.pack("!I", len(networks.keys()))
+        for conn in clients:
+            try:
+                conn.sendall(header)
+            except:
+                conn.close()
+                disconnected_clients.append(conn)
+
+        # Remove disconnected clients
+        if len(disconnected_clients) > 0:
+            clients = list(set(clients) - set(disconnected_clients))
+
+        # Send message (results)
+        for key in networks:
+            if (sys.version_info > (3, 0)):
+                message = struct.pack("!I", len(networks[key])) + raw(networks[key])
+            else:
+                message = struct.pack("!I", len(networks[key])) + str(networks[key])
+
+            for conn in clients:
+                try:
+                    conn.sendall(message)
+                except:
+                    conn.close()
+                    disconnected_clients.append(conn)
+
+        # Remove disconnected clients
+        if len(disconnected_clients) > 0:
+            clients = list(set(clients) - set(disconnected_clients))
 
 def packet_handler(p):
     global count
@@ -74,10 +129,8 @@ def packet_handler(p):
     if p.haslayer(Dot11Beacon) or p.haslayer(Dot11ProbeResp):
         count += 1
         bssid = p[Dot11].addr3
-        lock.acquire()
-        networks[bssid] = p
-        lock.release()
-
+        with networks_lock:
+            networks[bssid] = p
 
 def packet_sniffer():
     global sniffing
@@ -160,12 +213,12 @@ def interface_mode(mode):
     os.system("ip link set %s up" % interface)
     return success
 
-
 def signal_handler(signal, frame):
+    global sniffing
+    global running
     sniffing = False
     running = False
     sys.exit(0)
-
 
 if __name__ == "__main__":
 
@@ -190,62 +243,67 @@ if __name__ == "__main__":
 
     # Ignore alarm signal (triggered by waking up a WLAN Pi screen)
     signal.signal(signal.SIGALRM, signal.SIG_IGN)
-
-    # Start server
+    
+    # Create server
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
     try:
         s.bind(('0.0.0.0', port))
         s.listen(10)
-        running = True
-        while running:
-            info("ready")
-            conn, addr = s.accept()
-            remote_addr = conn.getpeername()
-
-            # Set interface in monitor mode
-            if interface_mode("monitor"):
-
-                sniffing = True
-
-                t = threading.Thread(target=packet_sniffer, args=())
-                t.daemon = True
-                t.start()
-
-                try:
-                    info("connected to " + remote_addr[0])
-                    while sniffing:
-                        if channel_hopper() == 0:
-                            lock.acquire()
-                            found = networks.copy()
-                            networks.clear()
-                            lock.release()
-                            conn.sendall(struct.pack("!I", len(found.keys())))
-                            for key in found:
-                                if (sys.version_info > (3, 0)):
-                                    conn.sendall(struct.pack("!I", len(found[key])) + raw(found[key]))
-                                else:
-                                    conn.sendall(struct.pack("!I", len(found[key])) + str(found[key]))
-                        else:
-                            break
-
-                except socket.error:
-                    pass
-
-                sniffing = False
-                t.join()
-            else:
-                error("failed to set monitor mode")
-
-            conn.close()
-            info("disconnected from " + remote_addr[0])
-
-            # Set interface in managed mode
-            interface_mode("managed")
-
     except socket.error as msg:
         error("bind failed: " + str(msg[0]) + " (" + msg[1] + ")")
         sys.exit(-1)
 
+    info("ready")
+
+    running = True
+    condition = threading.Condition()
+
+    # Start server
+    server = threading.Thread(target=server_handler, args=(s, condition))
+    server.daemon = True
+    server.start()
+
+    while running:
+
+        with condition:
+            while running and len(clients) == 0:
+                condition.wait()
+
+        # Set interface in monitor mode
+        if interface_mode("monitor"):
+
+            sniffing = True
+            info("sniffing")
+
+            t = threading.Thread(target=packet_sniffer, args=())
+            t.daemon = True
+            t.start()
+
+            while running and sniffing:
+
+                if len(clients) == 0:
+                    break
+
+                if channel_hopper() == 0:
+                    with networks_lock:
+                        found = networks.copy()
+                        networks.clear()
+                    send_results(found)
+                    with condition:
+                        if len(clients) < maxclients:
+                            condition.notify()
+                else:
+                    break
+
+            sniffing = False
+            t.join()
+        else:
+            error("failed to set monitor mode")
+
+        # Set interface in managed mode
+        interface_mode("managed")
+
+    info("exiting")
     s.close()
