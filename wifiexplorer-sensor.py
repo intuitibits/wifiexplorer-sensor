@@ -2,7 +2,7 @@
 #
 # wifiexplorer-sensor.py
 # This script enables remote scanning in WiFi Explorer Pro.
-# Version 4.0
+# Version 4.0.1
 #
 # Copyright (c) 2017 Adrian Granados. All rights reserved.
 #
@@ -302,6 +302,14 @@ if __name__ == "__main__":
         else:
             error("failed to set monitor mode")
 
+        # Clean up
+        with clients_lock:
+            for conn in clients:
+                conn.close()
+            clients = []
+            with condition:
+                condition.notify()
+            
         # Set interface in managed mode
         interface_mode("managed")
 
