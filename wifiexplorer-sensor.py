@@ -2,7 +2,7 @@
 #
 # wifiexplorer-sensor.py
 # This script enables remote scanning in WiFi Explorer Pro.
-# Version 4.0.1
+# Version 5.0
 #
 # Copyright (c) 2017 Adrian Granados. All rights reserved.
 #
@@ -50,16 +50,18 @@ unsupported_channels = set()
 mindwelltime = 0.060
 maxdwelltime = 0.180
 dwelltimes = {}  # a map of ch, dwelltime
-count = 0  # number of captured packets during dwelltime
+count = 0  # number of captured beacons or probe response frames during dwelltime
 
 clients  = []
-networks = {}
+beacon_or_probe_resp_frames = {}
+
+ctrl_or_data_frames = {}
 
 sniffing = False  # flag to stop sniffer
 running = False  # flag to stop main loop
 
 clients_lock  = threading.Lock()
-networks_lock = threading.Lock()
+frames_lock = threading.Lock()
 
 def error(message):
     if message:
@@ -87,13 +89,13 @@ def server_handler(socket, condition):
             with condition:
                 condition.notify()
 
-def send_results(networks):
+def send_results(frames):
     global clients
     disconnected_clients = []
 
     with clients_lock:
         # Send header (number of results)
-        header = struct.pack("!I", len(networks.keys()))
+        header = struct.pack("!I", len(frames))
         for conn in clients:
             try:
                 conn.sendall(header)
@@ -106,11 +108,11 @@ def send_results(networks):
             clients = list(set(clients) - set(disconnected_clients))
 
         # Send message (results)
-        for key in networks:
+        for frame in frames:
             if (sys.version_info > (3, 0)):
-                message = struct.pack("!I", len(networks[key])) + raw(networks[key])
+                message = struct.pack("!I", len(frame)) + raw(frame)
             else:
-                message = struct.pack("!I", len(networks[key])) + str(networks[key])
+                message = struct.pack("!I", len(frame)) + str(frame)
 
             for conn in clients:
                 try:
@@ -123,14 +125,27 @@ def send_results(networks):
         if len(disconnected_clients) > 0:
             clients = list(set(clients) - set(disconnected_clients))
 
+
 def packet_handler(p):
     global count
-    global networks
-    if p.haslayer(Dot11Beacon) or p.haslayer(Dot11ProbeResp):
-        count += 1
-        bssid = p[Dot11].addr3
-        with networks_lock:
-            networks[bssid] = p
+    global beacon_or_probe_resp_frames
+    if p.haslayer(Dot11):
+        if p.haslayer(Dot11Beacon) or p.haslayer(Dot11ProbeResp):
+            count += 1
+            bssid = p[Dot11].addr3
+            with frames_lock:
+                beacon_or_probe_resp_frames[bssid] = p
+        else:
+            type = p[Dot11].type
+            subtype = p[Dot11].subtype
+            if (type == 1 and (subtype == 9 or subtype == 11)) or (type == 2 and (subtype == 0 or subtype == 8)):
+                ra = p[Dot11].addr1
+                if (int(ra[0], 16) & 0x01) != 0x01: # Not broadcast or multicast
+                    ta = p[Dot11].addr2
+                    with frames_lock:
+                        ctrl_or_data_frames[ra] = p
+                        ctrl_or_data_frames[ta] = p
+
 
 def packet_sniffer():
     global sniffing
@@ -287,10 +302,12 @@ if __name__ == "__main__":
                     break
 
                 if channel_hopper() == 0:
-                    with networks_lock:
-                        found = networks.copy()
-                        networks.clear()
-                    send_results(found)
+                    with frames_lock:
+                        frames = beacon_or_probe_resp_frames.values()
+                        frames.extend(ctrl_or_data_frames.values())
+                        beacon_or_probe_resp_frames.clear()
+                        ctrl_or_data_frames.clear()
+                    send_results(frames)
                     with condition:
                         if len(clients) < maxclients:
                             condition.notify()
