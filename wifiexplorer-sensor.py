@@ -2,7 +2,7 @@
 #
 # wifiexplorer-sensor.py
 # This script enables remote scanning in WiFi Explorer Pro.
-# Version 5.0
+# Version 6.0
 #
 # Copyright (c) 2017 Adrian Granados. All rights reserved.
 #
@@ -24,16 +24,6 @@ import sys
 import signal
 import threading
 import logging
-import fcntl
-
-from libnl.attr import nla_put_u32
-from libnl.error import errmsg
-from libnl.genl.ctrl import genl_ctrl_resolve
-from libnl.genl.genl import genl_connect, genlmsg_put
-from libnl.msg import nlmsg_alloc
-from libnl.nl import nl_send_auto
-from libnl.nl80211 import nl80211
-from libnl.socket_ import nl_socket_alloc
 
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
 from scapy.all import *
@@ -72,6 +62,7 @@ def info(message):
     if message:
         print('> (info) {0}'.format(message))
 
+
 def server_handler(socket, condition):
     global clients
     global running
@@ -88,6 +79,7 @@ def server_handler(socket, condition):
             clients.append(conn)
             with condition:
                 condition.notify()
+
 
 def send_results(frames):
     global clients
@@ -129,7 +121,7 @@ def send_results(frames):
 def packet_handler(p):
     global count
     global beacon_or_probe_resp_frames
-    if p.haslayer(Dot11):
+    if p.haslayer(Dot11) or p.haslayer(Dot11FCS):
         if p.haslayer(Dot11Beacon) or p.haslayer(Dot11ProbeResp):
             count += 1
             bssid = p[Dot11].addr3
@@ -165,61 +157,20 @@ def channel_to_frequency(ch):
 
 def channel_hopper():
     global count
-
-    # Get the index of the interface
-    pack = struct.pack('16sI', interface.encode(), 0)
-    sk = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    try:
-        info = struct.unpack('16sI', fcntl.ioctl(sk.fileno(), 0x8933, pack))
-    except (OSError, IOError):
-        error('wireless interface {0} does not exist.'.format(interface))
-        return -1
-    finally:
-        sk.close()
-
-    if_index = int(info[1])
-
-    # Open a socket to the kernel
-    sk = nl_socket_alloc()
-    ret = genl_connect(sk)
-    if ret < 0:
-        reason = errmsg[abs(ret)]
-        error('genl_connect() failed: {0} ({1})'.format(ret, reason))
-        return -1
-
-    # Now get the nl80211 driver ID
-    driver_id = genl_ctrl_resolve(sk, b'nl80211')
-    if driver_id < 0:
-        reason = errmsg[abs(driver_id)]
-        error('genl_ctrl_resolve() failed: {0} ({1})'.format(driver_id, reason))
-        return -1
-
-    # Iterate over channels using the corresponding dwell time
     supported_channels = [x for x in channels if x not in unsupported_channels]
     for ch in supported_channels:
-
-        if not sniffing:
-            break
-
-        # Set new channel
-        msg = nlmsg_alloc()
-        genlmsg_put(msg, 0, 0, driver_id, 0, 0, nl80211.NL80211_CMD_SET_CHANNEL, 0)
-        nla_put_u32(msg, nl80211.NL80211_ATTR_IFINDEX, if_index)
-        nla_put_u32(msg, nl80211.NL80211_ATTR_WIPHY_FREQ, channel_to_frequency(ch))
-        nla_put_u32(msg, nl80211.NL80211_ATTR_WIPHY_CHANNEL_TYPE, nl80211.NL80211_CHAN_WIDTH_20)
-
-        if nl_send_auto(sk, msg) < 0:
-            unsupported_channels.add(ch)
-            time.sleep(0.01)
-        else:
+        if os.system("iw %s set channel %d HT20 > /dev/null 2>&1" % (interface, ch)) == 0:
             count = 0
             time.sleep(dwelltimes[ch])
             if count == 0:
                 dwelltimes[ch] = mindwelltime
             else:
                 dwelltimes[ch] = maxdwelltime
-
+        else:
+            unsupported_channels.add(ch)
+    
     return 0
+
 
 def interface_mode(mode):
     # Set interface in managed mode
@@ -228,12 +179,14 @@ def interface_mode(mode):
     os.system("ip link set %s up" % interface)
     return success
 
+
 def signal_handler(signal, frame):
     global sniffing
     global running
     sniffing = False
     running = False
     sys.exit(0)
+
 
 if __name__ == "__main__":
 
@@ -303,8 +256,8 @@ if __name__ == "__main__":
 
                 if channel_hopper() == 0:
                     with frames_lock:
-                        frames = beacon_or_probe_resp_frames.values()
-                        frames.extend(ctrl_or_data_frames.values())
+                        frames = list(beacon_or_probe_resp_frames.values())
+                        frames.extend(list(ctrl_or_data_frames.values()))
                         beacon_or_probe_resp_frames.clear()
                         ctrl_or_data_frames.clear()
                     send_results(frames)
