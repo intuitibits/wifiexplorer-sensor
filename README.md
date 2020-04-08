@@ -15,7 +15,8 @@ sudo chmod +x /usr/local/bin/wifiexplorer-sensor.py
 2. Install python3, python3-pip, scapy and tcpdump. If you're using a Debian-based platform you can type: 
 
 ```bash
-sudo apt-get install python3 python3-pip scapy tcpdump
+sudo apt-get install python3 python3-pip tcpdump
+sudo pip3 install scapy
 ```
 
 3. Launch the script. For example, if _wlan0_ is the Wi-Fi adapter to be used, type: 
