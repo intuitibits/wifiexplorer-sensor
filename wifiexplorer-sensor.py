@@ -142,7 +142,10 @@ def packet_handler(p):
 def packet_sniffer():
     global sniffing
     while sniffing:
-        sniff(iface=interface, prn=packet_handler, store=0, timeout=3)
+        try:
+            sniff(iface=interface, prn=packet_handler, store=0, timeout=3)
+        except:
+            sniffing = False
 
 
 def channel_to_frequency(ch):
@@ -168,7 +171,7 @@ def channel_hopper():
                 dwelltimes[ch] = maxdwelltime
         else:
             unsupported_channels.add(ch)
-    
+
     return 0
 
 
@@ -211,7 +214,7 @@ if __name__ == "__main__":
 
     # Ignore alarm signal (triggered by waking up a WLAN Pi screen)
     signal.signal(signal.SIGALRM, signal.SIG_IGN)
-    
+
     # Create server
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -279,7 +282,7 @@ if __name__ == "__main__":
             clients = []
             with condition:
                 condition.notify()
-            
+
         # Set interface in managed mode
         interface_mode("managed")
 
