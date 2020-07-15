@@ -1,0 +1,8 @@
+[Unit]
+Description=WiFi Explorer Remote Sensor
+
+[Service]
+ExecStart=/usr/local/bin/wifiexplorer-sensor wlan0
+
+[Install]
+WantedBy=multi-user.target
