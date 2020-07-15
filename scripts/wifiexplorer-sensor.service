@@ -1,3 +1,7 @@
+# WiFi Explorer Remote Sensor Startup Script
+#
+# Author:	Adrian Granados <adrian@intuitibits.com>
+#
 [Unit]
 Description=WiFi Explorer Remote Sensor
 
