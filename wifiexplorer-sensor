@@ -121,7 +121,7 @@ def send_results(frames):
 def packet_handler(p):
     global count
     global beacon_or_probe_resp_frames
-    if p.haslayer(Dot11) or p.haslayer(Dot11FCS):
+    if p.haslayer(Dot11):
         if p.haslayer(Dot11Beacon) or p.haslayer(Dot11ProbeResp):
             count += 1
             bssid = p[Dot11].addr3
