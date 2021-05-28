@@ -1,4 +1,6 @@
-# Remote Sensor Setup
+# [DEPRECATED] Remote Sensor Setup
+
+**Deprecated:** Starting in WiFi Explorer Pro 3.2, the wifiexplorer-sensor script is not longer needed to enable the remote scanning function.
 
 [WiFi Explorer Pro](https://www.intuitibits.com/products/wifi-explorer-pro) allows you to connect to a remote platform (e.g. Raspberry Pi) and perform a passive Wi-Fi scan using a capable Wi-Fi adapter. When a remote sensor is used, the scan results are sent back to WiFi Explorer Pro for its visualization.
 
