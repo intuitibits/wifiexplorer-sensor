@@ -1,4 +1,4 @@
-# [DEPRECATED] Remote Sensor Setup
+# Remote Sensor Setup [DEPRECATED]
 
 **DEPRECATED:** Starting in WiFi Explorer Pro 3.2, a remote sensor doesn't longer need the `wifiexplorer-sensor` to enable the remote scanning function. For more information, see: [Connect to a Remote Sensor](https://intuitibits.com/help/wifiexplorerpro/#/topic-en.lproj-connect_remote_sensor).
 
